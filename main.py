@@ -10,18 +10,18 @@ import google.generativeai as genai
 
 app = Flask(__name__)
 
-# 設定の読み込み
+# LINEとGeminiの設定
 line_access_token = os.getenv('LINE_CHANNEL_ACCESS_TOKEN')
 line_channel_secret = os.getenv('LINE_CHANNEL_SECRET')
 api_key = os.getenv('GEMINI_API_KEY')
 
-# 【重要】APIの初期化
+# 【重要】APIの設定を最新かつ安定した形式で行う
 genai.configure(api_key=api_key)
 
 configuration = Configuration(access_token=line_access_token)
 handler = WebhookHandler(line_channel_secret)
 
-# 【重要】最新のモデル名。SDKが自動で models/ を付けるのでこのままでOK
+# 【重要】モデル名を最新の flash に指定
 model = genai.GenerativeModel('gemini-1.5-flash')
 
 @app.route("/callback", methods=['POST'])
@@ -38,28 +38,29 @@ def callback():
 def handle_message(event):
     user_message = event.message.text
     try:
-        # AIで回答作成
-        response = model.generate_content("あなたは親切な占い師です。短く占って：" + user_message)
+        # AIで回答生成
+        response = model.generate_content("あなたは親切な占い師です。短く占ってください：" + user_message)
         
-        # LINEに送信
+        # もし安全フィルターで回答が空になった場合の対策
+        reply_text = response.text if response.text else "ごめんなさい、うまく占えませんでした。"
+
         with ApiClient(configuration) as api_client:
             line_bot_api = MessagingApi(api_client)
             line_bot_api.reply_message(
                 ReplyMessageRequest(
                     reply_token=event.reply_token,
-                    messages=[TextMessage(text=response.text)]
+                    messages=[TextMessage(text=reply_text)]
                 )
             )
     except Exception as e:
-        # 失敗したときに詳細を出す
-        error_detail = str(e)
-        print(f"Error detail: {error_detail}")
+        # エラーが出た場合、その内容の「最初の方だけ」を表示
+        error_msg = str(e)[:40]
         with ApiClient(configuration) as api_client:
             line_bot_api = MessagingApi(api_client)
             line_bot_api.reply_message(
                 ReplyMessageRequest(
                     reply_token=event.reply_token,
-                    messages=[TextMessage(text=f"占い失敗：{error_detail[:50]}")]
+                    messages=[TextMessage(text=f"占い失敗：{error_msg}")]
                 )
             )
 
