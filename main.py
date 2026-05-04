@@ -17,7 +17,7 @@ genai.configure(api_key=os.getenv('GEMINI_API_KEY'))
 
 configuration = Configuration(access_token=line_access_token)
 handler = WebhookHandler(line_channel_secret)
-model = genai.GenerativeModel('gemini-1.5-flash')
+model = genai.GenerativeModel(「gemini-pro」)
 
 @app.route("/callback", methods=['POST'])
 def callback():
