@@ -16,11 +16,10 @@ line_channel_secret = os.getenv('LINE_CHANNEL_SECRET')
 api_key = os.getenv('GEMINI_API_KEY')
 
 # AIの設定
-if api_key:
-    genai.configure(api_key=api_key.strip())
+genai.configure(api_key=api_key)
 
-# 【修正】モデル名を正式なパスで指定します
-model = genai.GenerativeModel('models/gemini-1.5-flash')
+# 【重要】成功実績のあるモデル名を使います
+model = genai.GenerativeModel('gemini-1.5-pro')
 
 configuration = Configuration(access_token=line_access_token)
 handler = WebhookHandler(line_channel_secret)
@@ -38,29 +37,30 @@ def callback():
 @handler.add(MessageEvent, message=TextMessageContent)
 def handle_message(event):
     user_message = event.message.text
-    # 米印（**）を使わないように、かなり厳しくAIに指示します
+    # 占い師の設定
     system_prompt = (
-        "あなたは一流の占い師です。優雅な敬語で占ってください。"
-        "【厳禁】文中に ** や * などの記号は絶対に一か所も使わないでください。"
-        "文章だけで構成し、最後に『良い一日を！』と付けてください。"
+        "あなたはプロの西洋占星術師です。優雅な敬語で占ってください。"
+        "【重要】回答に ** などの記号は一切使わないでください。"
+        "最後に必ず『詳細鑑定はココナラへ：https://coconala.com/users/あなたのID』と付けてください。"
     )
 
     try:
-        response = model.generate_content(system_prompt + "\n\n相談：" + user_message)
+        # AIで回答作成
+        response = model.generate_content(system_prompt + "\n\n相談内容：" + user_message)
         
-        # 万が一AIが米印を使っても、ここで強制的に消去します
-        clean_text = response.text.replace("*", "")
+        # 文章をきれいに整える
+        reply_text = response.text.replace("**", "").replace("*", "")
 
         with ApiClient(configuration) as api_client:
             line_bot_api = MessagingApi(api_client)
             line_bot_api.reply_message(
                 ReplyMessageRequest(
                     reply_token=event.reply_token,
-                    messages=[TextMessage(text=clean_text)]
+                    messages=[TextMessage(text=reply_text)]
                 )
             )
     except Exception as e:
-        # 失敗したとき、エラーの内容をLINEに送る
+        # 失敗したらエラーの内容を出す
         with ApiClient(configuration) as api_client:
             line_bot_api = MessagingApi(api_client)
             line_bot_api.reply_message(
