@@ -10,19 +10,19 @@ import google.generativeai as genai
 
 app = Flask(__name__)
 
-# 設定
+# 設定の読み込み
 line_access_token = os.getenv('LINE_CHANNEL_ACCESS_TOKEN')
 line_channel_secret = os.getenv('LINE_CHANNEL_SECRET')
 api_key = os.getenv('GEMINI_API_KEY')
 
-# AIの設定
-genai.configure(api_key=api_key)
+# APIの初期化
+if api_key:
+    genai.configure(api_key=api_key.strip()) # strip()で前後の空白を自動削除
+else:
+    print("APIキーがRenderで見つかりません！")
 
 configuration = Configuration(access_token=line_access_token)
 handler = WebhookHandler(line_channel_secret)
-
-# 【修正】モデル名をフルネーム（models/付き）で指定します
-model = genai.GenerativeModel('models/gemini-1.5-flash')
 
 @app.route("/callback", methods=['POST'])
 def callback():
@@ -36,31 +36,35 @@ def callback():
 
 @handler.add(MessageEvent, message=TextMessageContent)
 def handle_message(event):
-    user_message = event.message.text
+    # 診断開始
+    available_models = []
     try:
-        # AIで占い結果を作成
-        response = model.generate_content("あなたは親切な占い師です。短く占ってください：" + user_message)
-        
-        # 結果を送信
-        with ApiClient(configuration) as api_client:
-            line_bot_api = MessagingApi(api_client)
-            line_bot_api.reply_message(
-                ReplyMessageRequest(
-                    reply_token=event.reply_token,
-                    messages=[TextMessage(text=response.text)]
-                )
-            )
+        for m in genai.list_models():
+            if 'generateContent' in m.supported_generation_methods:
+                available_models.append(m.name.replace('models/', ''))
     except Exception as e:
-        # エラーの最初の50文字だけをLINEに返す
-        error_detail = str(e)[:50]
-        with ApiClient(configuration) as api_client:
-            line_bot_api = MessagingApi(api_client)
-            line_bot_api.reply_message(
-                ReplyMessageRequest(
-                    reply_token=event.reply_token,
-                    messages=[TextMessage(text=f"占い失敗：{error_detail}")]
-                )
+        available_models = [f"取得失敗: {str(e)[:30]}"]
+
+    user_message = event.message.text
+    # 診断結果を元にモデルを選択（1.5-flashがあれば使い、なければ一番最初に見つかったものを使う）
+    target_model = 'gemini-1.5-flash' if 'gemini-1.5-flash' in available_models else available_models[0]
+
+    try:
+        model = genai.GenerativeModel(target_model)
+        response = model.generate_content("あなたは占い師です。短く占って：" + user_message)
+        reply_text = response.text
+    except Exception as e:
+        # 失敗したら使えるモデルのリストを教えてくれる
+        reply_text = f"【診断結果】\n使えるモデル: {', '.join(available_models[:3])}\nエラー: {str(e)[:30]}"
+
+    with ApiClient(configuration) as api_client:
+        line_bot_api = MessagingApi(api_client)
+        line_bot_api.reply_message(
+            ReplyMessageRequest(
+                reply_token=event.reply_token,
+                messages=[TextMessage(text=reply_text)]
             )
+        )
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
