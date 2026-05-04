@@ -15,14 +15,14 @@ line_access_token = os.getenv('LINE_CHANNEL_ACCESS_TOKEN')
 line_channel_secret = os.getenv('LINE_CHANNEL_SECRET')
 api_key = os.getenv('GEMINI_API_KEY')
 
-# 【修正】通信方式を 'rest' に強制指定して安定させます
-genai.configure(api_key=api_key, transport='rest')
+# 【重要】APIの初期化
+genai.configure(api_key=api_key)
 
 configuration = Configuration(access_token=line_access_token)
 handler = WebhookHandler(line_channel_secret)
 
-# 【修正】最も古い、標準的な名前を使用します
-model = genai.GenerativeModel('gemini-pro')
+# 【重要】最新のモデル名。SDKが自動で models/ を付けるのでこのままでOK
+model = genai.GenerativeModel('gemini-1.5-flash')
 
 @app.route("/callback", methods=['POST'])
 def callback():
@@ -38,9 +38,10 @@ def callback():
 def handle_message(event):
     user_message = event.message.text
     try:
-        # AIで返信を生成
-        response = model.generate_content("あなたは占い師です。短く占って：" + user_message)
+        # AIで回答作成
+        response = model.generate_content("あなたは親切な占い師です。短く占って：" + user_message)
         
+        # LINEに送信
         with ApiClient(configuration) as api_client:
             line_bot_api = MessagingApi(api_client)
             line_bot_api.reply_message(
@@ -50,13 +51,15 @@ def handle_message(event):
                 )
             )
     except Exception as e:
-        # LINEにエラーを出す（これで最後のエラー確認）
+        # 失敗したときに詳細を出す
+        error_detail = str(e)
+        print(f"Error detail: {error_detail}")
         with ApiClient(configuration) as api_client:
             line_bot_api = MessagingApi(api_client)
             line_bot_api.reply_message(
                 ReplyMessageRequest(
                     reply_token=event.reply_token,
-                    messages=[TextMessage(text=f"失敗：{str(e)[:40]}")]
+                    messages=[TextMessage(text=f"占い失敗：{error_detail[:50]}")]
                 )
             )
 
