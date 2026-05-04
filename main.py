@@ -15,11 +15,9 @@ line_access_token = os.getenv('LINE_CHANNEL_ACCESS_TOKEN')
 line_channel_secret = os.getenv('LINE_CHANNEL_SECRET')
 api_key = os.getenv('GEMINI_API_KEY')
 
-# APIの初期化
-if api_key:
-    genai.configure(api_key=api_key.strip()) # strip()で前後の空白を自動削除
-else:
-    print("APIキーがRenderで見つかりません！")
+# AIの設定
+genai.configure(api_key=api_key)
+model = genai.GenerativeModel('gemini-1.5-flash')
 
 configuration = Configuration(access_token=line_access_token)
 handler = WebhookHandler(line_channel_secret)
@@ -36,35 +34,35 @@ def callback():
 
 @handler.add(MessageEvent, message=TextMessageContent)
 def handle_message(event):
-    # 診断開始
-    available_models = []
-    try:
-        for m in genai.list_models():
-            if 'generateContent' in m.supported_generation_methods:
-                available_models.append(m.name.replace('models/', ''))
-    except Exception as e:
-        available_models = [f"取得失敗: {str(e)[:30]}"]
-
     user_message = event.message.text
-    # 診断結果を元にモデルを選択（1.5-flashがあれば使い、なければ一番最初に見つかったものを使う）
-    target_model = 'gemini-1.5-flash' if 'gemini-1.5-flash' in available_models else available_models[0]
+    
+    # 【ここが重要！】占い師の「性格」や「ルール」を決める指示書です
+    system_prompt = (
+        "あなたは一流の西洋占星術師です。"
+        "以下のルールを厳守してください：\n"
+        "1. 文中に ** などのマークダウン記号（米印）は絶対に使わないでください。太字にする必要はありません。\n"
+        "2. 優雅で丁寧、かつ親しみやすい「占い師らしい」言葉遣いで話してください。\n"
+        "3. 最後に必ず『詳細な鑑定をご希望の方は、ぜひココナラへお越しください：https://coconala.com/users/あなたのID』という案内を付けてください。"
+    )
 
     try:
-        model = genai.GenerativeModel(target_model)
-        response = model.generate_content("あなたは占い師です。短く占って：" + user_message)
-        reply_text = response.text
-    except Exception as e:
-        # 失敗したら使えるモデルのリストを教えてくれる
-        reply_text = f"【診断結果】\n使えるモデル: {', '.join(available_models[:3])}\nエラー: {str(e)[:30]}"
+        # AIで回答作成
+        response = model.generate_content(system_prompt + "\n\n相談内容：" + user_message)
+        
+        # 文章をきれいに整える（念のため米印をプログラムでも消す）
+        clean_text = response.text.replace("*", "")
 
-    with ApiClient(configuration) as api_client:
-        line_bot_api = MessagingApi(api_client)
-        line_bot_api.reply_message(
-            ReplyMessageRequest(
-                reply_token=event.reply_token,
-                messages=[TextMessage(text=reply_text)]
+        # LINEに送信
+        with ApiClient(configuration) as api_client:
+            line_bot_api = MessagingApi(api_client)
+            line_bot_api.reply_message(
+                ReplyMessageRequest(
+                    reply_token=event.reply_token,
+                    messages=[TextMessage(text=clean_text)]
+                )
             )
-        )
+    except Exception as e:
+        print(f"Error: {e}")
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
