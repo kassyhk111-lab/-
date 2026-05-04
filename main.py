@@ -13,13 +13,16 @@ app = Flask(__name__)
 # LINEとGeminiの設定
 line_access_token = os.getenv('LINE_CHANNEL_ACCESS_TOKEN')
 line_channel_secret = os.getenv('LINE_CHANNEL_SECRET')
-genai.configure(api_key=os.getenv('GEMINI_API_KEY'))
+api_key = os.getenv('GEMINI_API_KEY')
+
+# APIの初期化（安定版 v1 を使用するように設定）
+genai.configure(api_key=api_key)
 
 configuration = Configuration(access_token=line_access_token)
 handler = WebhookHandler(line_channel_secret)
 
-# モデル名はこれで固定します
-model = genai.GenerativeModel('gemini-1.5-flash')
+# 【修正ポイント】モデル名の前に 'models/' を付け、最新のフラッシュモデルを指定
+model = genai.GenerativeModel('models/gemini-1.5-flash')
 
 @app.route("/callback", methods=['POST'])
 def callback():
@@ -50,15 +53,15 @@ def handle_message(event):
                 )
             )
     except Exception as e:
-        # エラーの内容を「すべて」表示するように変更しました
-        error_msg = str(e)
-        print(f"エラー内容: {error_msg}")
+        error_str = str(e)
+        print(f"Error: {error_str}")
+        # LINEに原因を短く表示
         with ApiClient(configuration) as api_client:
             line_bot_api = MessagingApi(api_client)
             line_bot_api.reply_message(
                 ReplyMessageRequest(
                     reply_token=event.reply_token,
-                    messages=[TextMessage(text=f"エラーが発生しました：\n{error_msg[:100]}")]
+                    messages=[TextMessage(text=f"占い失敗：{error_str[:30]}")]
                 )
             )
 
