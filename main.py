@@ -10,15 +10,14 @@ import google.generativeai as genai
 
 app = Flask(__name__)
 
-# 設定
+# 環境変数の取得
 line_access_token = os.getenv('LINE_CHANNEL_ACCESS_TOKEN')
 line_channel_secret = os.getenv('LINE_CHANNEL_SECRET')
 api_key = os.getenv('GEMINI_API_KEY')
 
-# 【修正】通信を安定させる設定を追加
+# AIの設定（APIキーがある場合のみ設定する）
 if api_key:
-    genai.configure(api_key=api_key.strip(), transport='rest')
-model = genai.GenerativeModel('gemini-1.5-flash')
+    genai.configure(api_key=api_key.strip())
 
 configuration = Configuration(access_token=line_access_token)
 handler = WebhookHandler(line_channel_secret)
@@ -36,29 +35,40 @@ def callback():
 @handler.add(MessageEvent, message=TextMessageContent)
 def handle_message(event):
     user_message = event.message.text
-    # 米印を使わない、ココナラ宣伝入りのプロンプト
+    # 占い師の設定
     system_prompt = (
-        "あなたはプロの西洋占星術師です。優雅な敬語で占ってください。"
+        "あなたは一流の西洋占星術師です。優雅な敬語で占ってください。"
         "回答に ** などの記号は一切使わないでください。"
         "最後に必ず『詳細鑑定はココナラへ：https://coconala.com/users/あなたのID』と付けてください。"
     )
 
     try:
-        # AIで回答作成
-        response = model.generate_content(system_prompt + "\n\n相談：" + user_message)
+        # メッセージ受信時にモデルを初期化する（起動時のエラーを防ぐため）
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        response = model.generate_content(system_prompt + "\n\n相談内容：" + user_message)
         
-        # 文章をきれいに掃除（米印を消す）
-        clean_text = response.text.replace("*", "")
+        # 文章をきれいに整える
+        reply_text = response.text.replace("*", "")
 
         with ApiClient(configuration) as api_client:
             line_bot_api = MessagingApi(api_client)
             line_bot_api.reply_message(
                 ReplyMessageRequest(
                     reply_token=event.reply_token,
-                    messages=[TextMessage(text=clean_text)]
+                    messages=[TextMessage(text=reply_text)]
                 )
             )
     except Exception as e:
-        # 【重要】エラーが出たらLINEに詳細を報告させる
-        error_msg = str(e)
-        with ApiClient(configuration) a
+        # エラーが起きたらLINEに報告する
+        with ApiClient(configuration) as api_client:
+            line_bot_api = MessagingApi(api_client)
+            line_bot_api.reply_message(
+                ReplyMessageRequest(
+                    reply_token=event.reply_token,
+                    messages=[TextMessage(text=f"占い失敗：{str(e)[:50]}")]
+                )
+            )
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
