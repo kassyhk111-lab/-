@@ -18,7 +18,7 @@ genai.configure(api_key=os.getenv('GEMINI_API_KEY'))
 configuration = Configuration(access_token=line_access_token)
 handler = WebhookHandler(line_channel_secret)
 
-# 【最重要】現在最も安定しているモデル名に固定します
+# モデル名はこれで固定します
 model = genai.GenerativeModel('gemini-1.5-flash')
 
 @app.route("/callback", methods=['POST'])
@@ -50,14 +50,15 @@ def handle_message(event):
                 )
             )
     except Exception as e:
-        print(f"エラー内容: {e}")
-        # 失敗したときにLINEにエラー内容の一部を出すようにしました（原因特定のため）
+        # エラーの内容を「すべて」表示するように変更しました
+        error_msg = str(e)
+        print(f"エラー内容: {error_msg}")
         with ApiClient(configuration) as api_client:
             line_bot_api = MessagingApi(api_client)
             line_bot_api.reply_message(
                 ReplyMessageRequest(
                     reply_token=event.reply_token,
-                    messages=[TextMessage(text=f"ごめんなさい、占えませんでした。({str(e)[:20]})")]
+                    messages=[TextMessage(text=f"エラーが発生しました：\n{error_msg[:100]}")]
                 )
             )
 
