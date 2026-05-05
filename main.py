@@ -19,7 +19,7 @@ api_key = os.getenv('GEMINI_API_KEY')
 genai.configure(api_key=api_key)
 
 # 【重要】成功実績のあるモデル名を使います
-model = genai.GenerativeModel('gemini-1.5-pro')
+model = genai.GenerativeModel('gemini-2.0-flash')
 
 configuration = Configuration(access_token=line_access_token)
 handler = WebhookHandler(line_channel_secret)
