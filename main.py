@@ -7,21 +7,22 @@ from linebot.v3.messaging import (
 )
 from linebot.v3.webhooks import MessageEvent, TextMessageContent
 
-from google import genai
+import google.generativeai as genai
 
 app = Flask(__name__)
 
-# ===== 環境変数 =====
+# 環境変数
 LINE_ACCESS_TOKEN = os.getenv("LINE_CHANNEL_ACCESS_TOKEN")
 LINE_CHANNEL_SECRET = os.getenv("LINE_CHANNEL_SECRET")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
-# ===== LINE設定 =====
-configuration = Configuration(access_token=LINE_ACCESS_TOKEN)
-handler = WebhookHandler(LINE_CHANNEL_SECRET)
+# 安全チェック（ここ重要）
+if not GEMINI_API_KEY:
+    raise Exception("GEMINI_API_KEY が未設定")
 
-# ===== Gemini（新SDK）=====
-client = genai.Client(api_key=GEMINI_API_KEY)
+# Gemini（旧安定SDKに統一）
+genai.configure(api_key=GEMINI_API_KEY)
+model = genai.GenerativeModel("gemini-1.5-flash")
 
 
 @app.route("/callback", methods=["POST"])
@@ -31,10 +32,13 @@ def callback():
 
     try:
         handler.handle(body, signature)
-    except InvalidSignatureError:
+    except Exception:
         abort(400)
 
     return "OK"
+
+
+handler = WebhookHandler(LINE_CHANNEL_SECRET)
 
 
 @handler.add(MessageEvent, message=TextMessageContent)
@@ -45,24 +49,17 @@ def handle_message(event):
         "あなたはプロの西洋占星術師です。"
         "丁寧な敬語で占ってください。"
         "記号は使わないでください。"
-        "最後に一言アドバイスを入れてください。"
         "\n\n相談内容：" + user_message
     )
 
     try:
-        # ===== Gemini呼び出し =====
-        response = client.models.generate_content(
-            model="gemini-1.5-flash-latest",
-            contents=prompt
-        )
-
+        response = model.generate_content(prompt)
         reply_text = response.text
 
     except Exception as e:
-        reply_text = f"エラーが発生しました：{str(e)[:80]}"
+        reply_text = f"エラー：{str(e)[:80]}"
 
-    # ===== LINE返信 =====
-    with ApiClient(configuration) as api_client:
+    with ApiClient(Configuration(access_token=LINE_ACCESS_TOKEN)) as api_client:
         line_bot_api = MessagingApi(api_client)
         line_bot_api.reply_message(
             ReplyMessageRequest(
