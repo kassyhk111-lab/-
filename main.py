@@ -16,9 +16,12 @@ LINE_ACCESS_TOKEN = os.getenv("LINE_CHANNEL_ACCESS_TOKEN")
 LINE_CHANNEL_SECRET = os.getenv("LINE_CHANNEL_SECRET")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
-# Gemini設定（安定版SDK）
+# Gemini設定（安定版）
 genai.configure(api_key=GEMINI_API_KEY)
-model = genai.GenerativeModel("gemini-1.5-flash")
+
+# ★ここ重要：v1betaで安定するモデル
+model = genai.GenerativeModel("gemini-1.5-pro")
+
 
 # LINE設定
 configuration = Configuration(access_token=LINE_ACCESS_TOKEN)
@@ -45,7 +48,7 @@ def handle_message(event):
     system_prompt = (
         "あなたはプロの西洋占星術師です。"
         "優雅な敬語で占ってください。"
-        "記号（**など）は一切使わないでください。"
+        "記号（**など）は使わないでください。"
         "最後に必ずココナラ案内を付けてください。"
     )
 
