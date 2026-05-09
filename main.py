@@ -10,19 +10,22 @@ from google import genai
 
 app = Flask(__name__)
 
-line_access_token = os.getenv("LINE_CHANNEL_ACCESS_TOKEN")
-line_channel_secret = os.getenv("LINE_CHANNEL_SECRET")
-api_key = os.getenv("GEMINI_API_KEY")
+# 環境変数
+LINE_ACCESS_TOKEN = os.getenv("LINE_CHANNEL_ACCESS_TOKEN")
+LINE_CHANNEL_SECRET = os.getenv("LINE_CHANNEL_SECRET")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
-client = genai.Client(api_key=api_key)
+# Geminiクライアント
+client = genai.Client(api_key=GEMINI_API_KEY)
 
-configuration = Configuration(access_token=line_access_token)
-handler = WebhookHandler(line_channel_secret)
+# LINE設定
+configuration = Configuration(access_token=LINE_ACCESS_TOKEN)
+handler = WebhookHandler(LINE_CHANNEL_SECRET)
 
 
 @app.route("/callback", methods=["POST"])
 def callback():
-    signature = request.headers["X-Line-Signature"]
+    signature = request.headers.get("X-Line-Signature")
     body = request.get_data(as_text=True)
 
     try:
@@ -40,14 +43,14 @@ def handle_message(event):
     system_prompt = (
         "あなたはプロの西洋占星術師です。"
         "優雅な敬語で占ってください。"
-        "【重要】回答に記号は使わないでください。"
-        "最後に必ずココナラ案内を付けてください。"
+        "記号（**など）は一切使わないでください。"
+        "最後に必ずココナラの案内を付けてください。"
     )
 
     try:
         prompt = system_prompt + "\n\n相談内容：" + user_message
 
-        # ⭐ここが正解（重要）
+        # Gemini呼び出し（安定版）
         response = client.models.generate_content(
             model="gemini-1.5-flash",
             contents=prompt
