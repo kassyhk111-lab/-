@@ -11,31 +11,23 @@ from google import genai
 
 app = Flask(__name__)
 
-# 環境変数（Renderに入れる）
+# ===== 環境変数 =====
 LINE_ACCESS_TOKEN = os.getenv("LINE_CHANNEL_ACCESS_TOKEN")
 LINE_CHANNEL_SECRET = os.getenv("LINE_CHANNEL_SECRET")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
-# ★安全チェック（ここがないとステータス1になる原因になる）
-if not GEMINI_API_KEY:
-    raise Exception("GEMINI_API_KEY が設定されていません")
-if not LINE_ACCESS_TOKEN:
-    raise Exception("LINE_CHANNEL_ACCESS_TOKEN が設定されていません")
-if not LINE_CHANNEL_SECRET:
-    raise Exception("LINE_CHANNEL_SECRET が設定されていません")
-
-# Geminiクライアント（新SDK）
-client = genai.Client(api_key=GEMINI_API_KEY)
-
-# LINE設定
+# ===== LINE設定 =====
 configuration = Configuration(access_token=LINE_ACCESS_TOKEN)
 handler = WebhookHandler(LINE_CHANNEL_SECRET)
+
+# ===== Gemini（新SDK）=====
+client = genai.Client(api_key=GEMINI_API_KEY)
 
 
 @app.route("/callback", methods=["POST"])
 def callback():
-    signature = request.headers.get("X-Line-Signature")
     body = request.get_data(as_text=True)
+    signature = request.headers.get("X-Line-Signature")
 
     try:
         handler.handle(body, signature)
@@ -49,17 +41,16 @@ def callback():
 def handle_message(event):
     user_message = event.message.text
 
-    system_prompt = (
+    prompt = (
         "あなたはプロの西洋占星術師です。"
-        "優雅な敬語で占ってください。"
-        "記号（**など）は使わないでください。"
-        "最後に必ずココナラ案内を付けてください。"
+        "丁寧な敬語で占ってください。"
+        "記号は使わないでください。"
+        "最後に一言アドバイスを入れてください。"
+        "\n\n相談内容：" + user_message
     )
 
     try:
-        prompt = system_prompt + "\n\n相談内容：" + user_message
-
-        # Gemini呼び出し
+        # ===== Gemini呼び出し =====
         response = client.models.generate_content(
             model="gemini-1.5-flash-latest",
             contents=prompt
@@ -67,24 +58,18 @@ def handle_message(event):
 
         reply_text = response.text
 
-        with ApiClient(configuration) as api_client:
-            line_bot_api = MessagingApi(api_client)
-            line_bot_api.reply_message(
-                ReplyMessageRequest(
-                    reply_token=event.reply_token,
-                    messages=[TextMessage(text=reply_text)]
-                )
-            )
-
     except Exception as e:
-        with ApiClient(configuration) as api_client:
-            line_bot_api = MessagingApi(api_client)
-            line_bot_api.reply_message(
-                ReplyMessageRequest(
-                    reply_token=event.reply_token,
-                    messages=[TextMessage(text=f"失敗：{str(e)[:80]}")]
-                )
+        reply_text = f"エラーが発生しました：{str(e)[:80]}"
+
+    # ===== LINE返信 =====
+    with ApiClient(configuration) as api_client:
+        line_bot_api = MessagingApi(api_client)
+        line_bot_api.reply_message(
+            ReplyMessageRequest(
+                reply_token=event.reply_token,
+                messages=[TextMessage(text=reply_text)]
             )
+        )
 
 
 if __name__ == "__main__":
