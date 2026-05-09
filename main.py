@@ -6,7 +6,8 @@ from linebot.v3.messaging import (
     Configuration, ApiClient, MessagingApi, ReplyMessageRequest, TextMessage
 )
 from linebot.v3.webhooks import MessageEvent, TextMessageContent
-from google import genai
+
+import google.generativeai as genai
 
 app = Flask(__name__)
 
@@ -15,8 +16,9 @@ LINE_ACCESS_TOKEN = os.getenv("LINE_CHANNEL_ACCESS_TOKEN")
 LINE_CHANNEL_SECRET = os.getenv("LINE_CHANNEL_SECRET")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
-# Geminiクライアント
-client = genai.Client(api_key=GEMINI_API_KEY)
+# Gemini設定（安定版SDK）
+genai.configure(api_key=GEMINI_API_KEY)
+model = genai.GenerativeModel("gemini-1.5-flash")
 
 # LINE設定
 configuration = Configuration(access_token=LINE_ACCESS_TOKEN)
@@ -44,18 +46,14 @@ def handle_message(event):
         "あなたはプロの西洋占星術師です。"
         "優雅な敬語で占ってください。"
         "記号（**など）は一切使わないでください。"
-        "最後に必ずココナラの案内を付けてください。"
+        "最後に必ずココナラ案内を付けてください。"
     )
 
     try:
         prompt = system_prompt + "\n\n相談内容：" + user_message
 
         # Gemini呼び出し（安定版）
-        response = client.models.generate_content(
-            model="gemini-1.5-flash",
-            contents=prompt
-        )
-
+        response = model.generate_content(prompt)
         reply_text = response.text
 
         with ApiClient(configuration) as api_client:
