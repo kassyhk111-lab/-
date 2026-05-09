@@ -11,18 +11,26 @@ import google.generativeai as genai
 
 app = Flask(__name__)
 
-# 環境変数
+# ===== 環境変数 =====
 LINE_ACCESS_TOKEN = os.getenv("LINE_CHANNEL_ACCESS_TOKEN")
 LINE_CHANNEL_SECRET = os.getenv("LINE_CHANNEL_SECRET")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
-# 安全チェック（ここ重要）
+# ===== 安全チェック（ステータス1防止）=====
 if not GEMINI_API_KEY:
-    raise Exception("GEMINI_API_KEY が未設定")
+    raise Exception("GEMINI_API_KEY が未設定です")
+if not LINE_ACCESS_TOKEN:
+    raise Exception("LINE_CHANNEL_ACCESS_TOKEN が未設定です")
+if not LINE_CHANNEL_SECRET:
+    raise Exception("LINE_CHANNEL_SECRET が未設定です")
 
-# Gemini（旧安定SDKに統一）
+# ===== Gemini（安定SDK）=====
 genai.configure(api_key=GEMINI_API_KEY)
 model = genai.GenerativeModel("gemini-1.5-flash")
+
+# ===== LINE設定 =====
+configuration = Configuration(access_token=LINE_ACCESS_TOKEN)
+handler = WebhookHandler(LINE_CHANNEL_SECRET)
 
 
 @app.route("/callback", methods=["POST"])
@@ -32,13 +40,10 @@ def callback():
 
     try:
         handler.handle(body, signature)
-    except Exception:
+    except InvalidSignatureError:
         abort(400)
 
     return "OK"
-
-
-handler = WebhookHandler(LINE_CHANNEL_SECRET)
 
 
 @handler.add(MessageEvent, message=TextMessageContent)
@@ -59,7 +64,7 @@ def handle_message(event):
     except Exception as e:
         reply_text = f"エラー：{str(e)[:80]}"
 
-    with ApiClient(Configuration(access_token=LINE_ACCESS_TOKEN)) as api_client:
+    with ApiClient(configuration) as api_client:
         line_bot_api = MessagingApi(api_client)
         line_bot_api.reply_message(
             ReplyMessageRequest(
