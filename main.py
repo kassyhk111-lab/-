@@ -16,7 +16,7 @@ LINE_CHANNEL_SECRET = os.getenv("LINE_CHANNEL_SECRET")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 if not GEMINI_API_KEY:
-    raise Exception("GEMINI_API_KEY が未設定")
+    raise Exception("GEMINI_API_KEY missing")
 
 genai.configure(api_key=GEMINI_API_KEY)
 model = genai.GenerativeModel("gemini-1.5-flash")
@@ -40,15 +40,13 @@ def callback():
 
 @handler.add(MessageEvent, message=TextMessageContent)
 def handle_message(event):
-    prompt = event.message.text
-
     try:
-        response = model.generate_content(prompt)
+        response = model.generate_content(event.message.text)
         reply_text = response.text
     except Exception as e:
         reply_text = f"エラー：{str(e)[:80]}"
 
-    with ApiClient(configuration) as api_client:
+    with ApiClient(Configuration(access_token=LINE_ACCESS_TOKEN)) as api_client:
         line_bot_api = MessagingApi(api_client)
         line_bot_api.reply_message(
             ReplyMessageRequest(
