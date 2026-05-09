@@ -6,18 +6,19 @@ from linebot.v3.messaging import (
     Configuration, ApiClient, MessagingApi, ReplyMessageRequest, TextMessage
 )
 from linebot.v3.webhooks import MessageEvent, TextMessageContent
-import google.genai as genai
+from google import genai
 
 app = Flask(__name__)
 
-# 設定
+# 環境変数
 line_access_token = os.getenv("LINE_CHANNEL_ACCESS_TOKEN")
 line_channel_secret = os.getenv("LINE_CHANNEL_SECRET")
 api_key = os.getenv("GEMINI_API_KEY")
 
-# Gemini 新SDK設定
+# Geminiクライアント
 client = genai.Client(api_key=api_key)
 
+# LINE設定
 configuration = Configuration(access_token=line_access_token)
 handler = WebhookHandler(line_channel_secret)
 
@@ -39,7 +40,6 @@ def callback():
 def handle_message(event):
     user_message = event.message.text
 
-    # 占い師の設定
     system_prompt = (
         "あなたはプロの西洋占星術師です。"
         "優雅な敬語で占ってください。"
@@ -50,9 +50,9 @@ def handle_message(event):
     try:
         prompt = system_prompt + "\n\n相談内容：" + user_message
 
-        # Gemini 新SDKで回答生成
-        response = client.models.generate_content(
-            model="gemini-1.5-flash-latest",
+        # Gemini呼び出し（ここが重要）
+        response = client.generate_content(
+            model="gemini-1.5-flash",
             contents=prompt
         )
 
@@ -73,8 +73,7 @@ def handle_message(event):
             line_bot_api.reply_message(
                 ReplyMessageRequest(
                     reply_token=event.reply_token,
-                    messages=[TextMessage(text=f"失敗：{str(e)[:80]}")
-                    ]
+                    messages=[TextMessage(text=f"失敗：{str(e)[:80]}")]
                 )
             )
 
