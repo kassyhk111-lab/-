@@ -15,9 +15,7 @@ LINE_ACCESS_TOKEN = os.getenv("LINE_CHANNEL_ACCESS_TOKEN")
 LINE_CHANNEL_SECRET = os.getenv("LINE_CHANNEL_SECRET")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
-if not GEMINI_API_KEY:
-    raise Exception("GEMINI_API_KEY missing")
-
+# Gemini設定
 genai.configure(api_key=GEMINI_API_KEY)
 model = genai.GenerativeModel("gemini-1.5-flash")
 
@@ -44,9 +42,9 @@ def handle_message(event):
         response = model.generate_content(event.message.text)
         reply_text = response.text
     except Exception as e:
-        reply_text = f"エラー：{str(e)[:80]}"
+        reply_text = f"エラー：{str(e)[:100]}"
 
-    with ApiClient(Configuration(access_token=LINE_ACCESS_TOKEN)) as api_client:
+    with ApiClient(configuration) as api_client:
         line_bot_api = MessagingApi(api_client)
         line_bot_api.reply_message(
             ReplyMessageRequest(
