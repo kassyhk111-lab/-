@@ -11,12 +11,20 @@ from google import genai
 
 app = Flask(__name__)
 
-# 環境変数
+# 環境変数（Renderに入れる）
 LINE_ACCESS_TOKEN = os.getenv("LINE_CHANNEL_ACCESS_TOKEN")
 LINE_CHANNEL_SECRET = os.getenv("LINE_CHANNEL_SECRET")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
-# Gemini（新SDK）
+# ★安全チェック（ここがないとステータス1になる原因になる）
+if not GEMINI_API_KEY:
+    raise Exception("GEMINI_API_KEY が設定されていません")
+if not LINE_ACCESS_TOKEN:
+    raise Exception("LINE_CHANNEL_ACCESS_TOKEN が設定されていません")
+if not LINE_CHANNEL_SECRET:
+    raise Exception("LINE_CHANNEL_SECRET が設定されていません")
+
+# Geminiクライアント（新SDK）
 client = genai.Client(api_key=GEMINI_API_KEY)
 
 # LINE設定
@@ -51,7 +59,7 @@ def handle_message(event):
     try:
         prompt = system_prompt + "\n\n相談内容：" + user_message
 
-        # Gemini呼び出し（新SDK）
+        # Gemini呼び出し
         response = client.models.generate_content(
             model="gemini-1.5-flash-latest",
             contents=prompt
