@@ -10,15 +10,12 @@ from google import genai
 
 app = Flask(__name__)
 
-# 環境変数
 line_access_token = os.getenv("LINE_CHANNEL_ACCESS_TOKEN")
 line_channel_secret = os.getenv("LINE_CHANNEL_SECRET")
 api_key = os.getenv("GEMINI_API_KEY")
 
-# Geminiクライアント
 client = genai.Client(api_key=api_key)
 
-# LINE設定
 configuration = Configuration(access_token=line_access_token)
 handler = WebhookHandler(line_channel_secret)
 
@@ -43,20 +40,20 @@ def handle_message(event):
     system_prompt = (
         "あなたはプロの西洋占星術師です。"
         "優雅な敬語で占ってください。"
-        "【重要】回答に ** などの記号は一切使わないでください。"
-        "最後に必ず『詳細鑑定はココナラへ：https://coconala.com/users/あなたのID』と付けてください。"
+        "【重要】回答に記号は使わないでください。"
+        "最後に必ずココナラ案内を付けてください。"
     )
 
     try:
         prompt = system_prompt + "\n\n相談内容：" + user_message
 
-        # Gemini呼び出し（ここが重要）
-        response = client.generate_content(
+        # ⭐ここが正解（重要）
+        response = client.models.generate_content(
             model="gemini-1.5-flash",
             contents=prompt
         )
 
-        reply_text = response.text.replace("**", "").replace("*", "")
+        reply_text = response.text
 
         with ApiClient(configuration) as api_client:
             line_bot_api = MessagingApi(api_client)
