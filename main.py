@@ -11,14 +11,20 @@ import google.generativeai as genai
 
 app = Flask(__name__)
 
+# ===== 環境変数 =====
 LINE_ACCESS_TOKEN = os.getenv("LINE_CHANNEL_ACCESS_TOKEN")
 LINE_CHANNEL_SECRET = os.getenv("LINE_CHANNEL_SECRET")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
-# Gemini設定
+# ===== チェック =====
+if not GEMINI_API_KEY:
+    raise Exception("GEMINI_API_KEY が未設定")
+
+# ===== Gemini（旧安定版）=====
 genai.configure(api_key=GEMINI_API_KEY)
 model = genai.GenerativeModel("gemini-1.5-flash")
 
+# ===== LINE設定 =====
 configuration = Configuration(access_token=LINE_ACCESS_TOKEN)
 handler = WebhookHandler(LINE_CHANNEL_SECRET)
 
@@ -41,10 +47,11 @@ def handle_message(event):
     try:
         response = model.generate_content(event.message.text)
         reply_text = response.text
-    except Exception as e:
-        reply_text = f"エラー：{str(e)[:100]}"
 
-    with ApiClient(configuration) as api_client:
+    except Exception as e:
+        reply_text = f"エラー：{str(e)[:120]}"
+
+    with ApiClient(Configuration(access_token=LINE_ACCESS_TOKEN)) as api_client:
         line_bot_api = MessagingApi(api_client)
         line_bot_api.reply_message(
             ReplyMessageRequest(
