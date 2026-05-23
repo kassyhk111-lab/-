@@ -11,7 +11,11 @@ from linebot.v3.messaging import (
     ReplyMessageRequest,
     TextMessage
 )
-from linebot.v3.webhooks import MessageEvent, TextMessageContent
+from linebot.v3.webhooks import (
+    MessageEvent,
+    TextMessageContent,
+    FollowEvent
+)
 
 app = Flask(__name__)
 
@@ -23,7 +27,11 @@ configuration = Configuration(access_token=LINE_ACCESS_TOKEN)
 handler = WebhookHandler(LINE_CHANNEL_SECRET)
 
 
+# -------------------------
+# OpenAI返信
+# -------------------------
 def get_ai_reply(user_message):
+
     headers = {
         "Authorization": f"Bearer {OPENAI_API_KEY}",
         "Content-Type": "application/json"
@@ -34,7 +42,10 @@ def get_ai_reply(user_message):
         "messages": [
             {
                 "role": "system",
-                "content": "あなたは優秀で親しみやすい占いLINEアシスタントです。自然な日本語で返信してください。"
+                "content": (
+                    "あなたは優秀で親しみやすい西洋占星術の占い師です。"
+                    "優しく、自然な日本語で返信してください。"
+                )
             },
             {
                 "role": "user",
@@ -53,30 +64,67 @@ def get_ai_reply(user_message):
 
     try:
         return result["choices"][0]["message"]["content"]
+
     except:
         return "現在AI返信でエラーが発生しています。"
 
 
+# -------------------------
+# Webhook
+# -------------------------
 @app.route("/callback", methods=["POST"])
 def callback():
+
     signature = request.headers["X-Line-Signature"]
     body = request.get_data(as_text=True)
 
     try:
         handler.handle(body, signature)
+
     except InvalidSignatureError:
         abort(400)
 
     return "OK"
 
 
+# -------------------------
+# 友達追加時
+# -------------------------
+@handler.add(FollowEvent)
+def handle_follow(event):
+
+    welcome_message = (
+        "友達追加ありがとうございます🔮\n\n"
+        "あなた専用の占いを始めます✨\n\n"
+        "まずは、お名前（ニックネームOK）を教えてください😊"
+    )
+
+    with ApiClient(configuration) as api_client:
+
+        line_bot_api = MessagingApi(api_client)
+
+        line_bot_api.reply_message(
+            ReplyMessageRequest(
+                reply_token=event.reply_token,
+                messages=[
+                    TextMessage(text=welcome_message)
+                ]
+            )
+        )
+
+
+# -------------------------
+# メッセージ受信
+# -------------------------
 @handler.add(MessageEvent, message=TextMessageContent)
 def handle_message(event):
+
     user_message = event.message.text
 
     ai_reply = get_ai_reply(user_message)
 
     with ApiClient(configuration) as api_client:
+
         line_bot_api = MessagingApi(api_client)
 
         line_bot_api.reply_message(
@@ -89,7 +137,14 @@ def handle_message(event):
         )
 
 
+# -------------------------
+# 起動
+# -------------------------
 if __name__ == "__main__":
+
     port = int(os.environ.get("PORT", 8080))
-    app.run(host="0.0.0.0", port=port)
-    
+
+    app.run(
+        host="0.0.0.0",
+        port=port
+    )
