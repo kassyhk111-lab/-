@@ -79,7 +79,28 @@ def get_ai_reply(user_data, user_message):
 
         result = response.json()
 
-        return result["choices"][0]["message"]["content"]
+        ai_reply = result["choices"][0]["message"]["content"]
+
+        ai_reply += """
+
+━━━━━━━━━━━
+
+さらに詳しく、
+
+・相手の本音
+・今後3ヶ月の流れ
+・恋愛成就のタイミング
+・あなたの潜在意識
+
+まで深く鑑定したい方は、
+こちらをご覧ください🔮
+
+（ここにココナラURL）
+
+━━━━━━━━━━━
+"""
+
+        return ai_reply
 
     except Exception as e:
 
