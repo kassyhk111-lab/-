@@ -251,6 +251,35 @@ def handle_message(event):
             "step": "completed"
         }
 
+    # -------------------------
+    # 無料鑑定リセット
+    # -------------------------
+    if user_message == "無料鑑定" or user_message == "無料鑑定希望":
+
+        user_states[user_id] = {
+            "step": "waiting_name"
+        }
+
+        reply_text = (
+            "無料鑑定を開始します🔮\n\n"
+            "まずは、お名前（ニックネームOK）を教えてください✨"
+        )
+
+        with ApiClient(configuration) as api_client:
+
+            line_bot_api = MessagingApi(api_client)
+
+            line_bot_api.reply_message(
+                ReplyMessageRequest(
+                    reply_token=event.reply_token,
+                    messages=[
+                        TextMessage(text=reply_text)
+                    ]
+                )
+            )
+
+        return
+
     current_step = user_states[user_id]["step"]
 
     # 名前入力
@@ -302,8 +331,8 @@ def handle_message(event):
     else:
 
         reply_text = (
-            "鑑定をご希望の場合は、\n"
-            "一度ブロック解除して最初からお試しください🔮"
+            "無料鑑定をご希望の場合は、\n"
+            "リッチメニューの『無料鑑定』を押してください🔮"
         )
 
     with ApiClient(configuration) as api_client:
