@@ -46,9 +46,8 @@ def get_ai_reply(user_message):
             {
                 "role": "system",
                 "content": (
-                    "あなたは優秀で親しみやすい西洋占星術の占い師です。"
-                    "名前は占い師HIDEです。"
-                    "優しく、自然な日本語で返信してください。"
+                    "あなたは西洋占星術の占い師HIDEです。"
+                    "優しく自然な日本語で返信してください。"
                 )
             },
             {
@@ -58,18 +57,22 @@ def get_ai_reply(user_message):
         ]
     }
 
-    response = requests.post(
-        "https://api.openai.com/v1/chat/completions",
-        headers=headers,
-        json=json_data
-    )
-
-    result = response.json()
-
     try:
+
+        response = requests.post(
+            "https://api.openai.com/v1/chat/completions",
+            headers=headers,
+            json=json_data
+        )
+
+        result = response.json()
+
         return result["choices"][0]["message"]["content"]
 
-    except:
+    except Exception as e:
+
+        print(e)
+
         return "現在AI返信でエラーが発生しています。"
 
 
@@ -134,10 +137,13 @@ def handle_message(event):
     user_id = event.source.user_id
     user_message = event.message.text
 
-    # 初回：名前入力
+    # 初回登録フロー
     if user_id in user_states:
 
-        if user_states[user_id]["step"] == "waiting_name":
+        current_step = user_states[user_id]["step"]
+
+        # 名前入力
+        if current_step == "waiting_name":
 
             user_states[user_id]["name"] = user_message
             user_states[user_id]["step"] = "waiting_birth"
@@ -148,7 +154,8 @@ def handle_message(event):
                 "（例：1995/03/21）"
             )
 
-        elif user_states[user_id]["step"] == "waiting_birth":
+        # 生年月日入力
+        elif current_step == "waiting_birth":
 
             user_states[user_id]["birth"] = user_message
             user_states[user_id]["step"] = "completed"
@@ -158,6 +165,7 @@ def handle_message(event):
                 "今、特に占ってほしいことを教えてください✨"
             )
 
+        # 通常AI会話
         else:
 
             reply_text = get_ai_reply(user_message)
