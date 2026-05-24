@@ -110,7 +110,7 @@ def get_ai_reply(user_data, user_message):
 
 続きが気になる方はこちら👇
 
-（ここにココナラURL）
+https://coconala.com/services/1761884?ref=profile_top_service
 
 ━━━━━━━━━━━
 """
@@ -142,7 +142,7 @@ def get_ai_reply(user_data, user_message):
 
 続きが気になる方はこちら👇
 
-（ここにココナラURL）
+https://coconala.com/services/1761884?ref=profile_top_service
 
 ━━━━━━━━━━━
 """
@@ -170,7 +170,7 @@ def get_ai_reply(user_data, user_message):
 
 続きが気になる方はこちら👇
 
-（ここにココナラURL）
+https://coconala.com/services/1761884?ref=profile_top_service
 
 ━━━━━━━━━━━
 """
