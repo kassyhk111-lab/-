@@ -33,26 +33,38 @@ user_states = {}
 # -------------------------
 # OpenAI返信
 # -------------------------
-def get_ai_reply(user_message):
+def get_ai_reply(user_data, user_message):
 
     headers = {
         "Authorization": f"Bearer {OPENAI_API_KEY}",
         "Content-Type": "application/json"
     }
 
+    prompt = f"""
+あなたは西洋占星術の占い師HIDEです。
+
+以下の情報をもとに、
+優しく、寄り添うように鑑定してください。
+
+【名前】
+{user_data.get("name", "")}
+
+【生年月日】
+{user_data.get("birth", "")}
+
+【相談内容】
+{user_data.get("problem", "")}
+
+【理想の未来】
+{user_message}
+"""
+
     json_data = {
         "model": "gpt-4o-mini",
         "messages": [
             {
                 "role": "system",
-                "content": (
-                    "あなたは西洋占星術の占い師HIDEです。"
-                    "優しく自然な日本語で返信してください。"
-                )
-            },
-            {
-                "role": "user",
-                "content": user_message
+                "content": prompt
             }
         ]
     }
@@ -137,42 +149,66 @@ def handle_message(event):
     user_id = event.source.user_id
     user_message = event.message.text
 
-    # 初回登録フロー
-    if user_id in user_states:
+    if user_id not in user_states:
 
-        current_step = user_states[user_id]["step"]
+        user_states[user_id] = {
+            "step": "completed"
+        }
 
-        # 名前入力
-        if current_step == "waiting_name":
+    current_step = user_states[user_id]["step"]
 
-            user_states[user_id]["name"] = user_message
-            user_states[user_id]["step"] = "waiting_birth"
+    # 名前入力
+    if current_step == "waiting_name":
 
-            reply_text = (
-                f"{user_message}さん、ありがとうございます✨\n\n"
-                "次に生年月日を教えてください😊\n"
-                "（例：1995/03/21）"
-            )
+        user_states[user_id]["name"] = user_message
+        user_states[user_id]["step"] = "waiting_birth"
 
-        # 生年月日入力
-        elif current_step == "waiting_birth":
+        reply_text = (
+            f"{user_message}さん、ありがとうございます✨\n\n"
+            "次に生年月日を教えてください😊\n"
+            "（例：1995/03/21）"
+        )
 
-            user_states[user_id]["birth"] = user_message
-            user_states[user_id]["step"] = "completed"
+    # 生年月日入力
+    elif current_step == "waiting_birth":
 
-            reply_text = (
-                "ありがとうございます🔮\n\n"
-                "今、特に占ってほしいことを教えてください✨"
-            )
+        user_states[user_id]["birth"] = user_message
+        user_states[user_id]["step"] = "waiting_problem"
 
-        # 通常AI会話
-        else:
+        reply_text = (
+            "ありがとうございます🔮\n\n"
+            "今、特に占ってほしいことを教えてください✨"
+        )
 
-            reply_text = get_ai_reply(user_message)
+    # 悩み入力
+    elif current_step == "waiting_problem":
 
+        user_states[user_id]["problem"] = user_message
+        user_states[user_id]["step"] = "waiting_future"
+
+        reply_text = (
+            "ありがとうございます✨\n\n"
+            "では最後に、\n"
+            "これからどうなっていきたいですか？🔮"
+        )
+
+    # 理想未来入力 → AI鑑定
+    elif current_step == "waiting_future":
+
+        reply_text = get_ai_reply(
+            user_states[user_id],
+            user_message
+        )
+
+        user_states[user_id]["step"] = "completed"
+
+    # 通常会話
     else:
 
-        reply_text = get_ai_reply(user_message)
+        reply_text = (
+            "鑑定をご希望の場合は、\n"
+            "一度ブロック解除して最初からお試しください🔮"
+        )
 
     with ApiClient(configuration) as api_client:
 
