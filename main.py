@@ -272,7 +272,7 @@ def handle_message(event):
         user_states[user_id]["problem"] = user_message
         user_states[user_id]["step"] = "waiting_future"
 
-     reply_text = (
+        reply_text = (
         "ありがとうございます✨\n\n"
         "最後に、\n\n"
         "今回の鑑定を通して、どうなりたいですか？🔮\n\n"
