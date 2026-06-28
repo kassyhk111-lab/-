@@ -272,11 +272,17 @@ def handle_message(event):
         user_states[user_id]["problem"] = user_message
         user_states[user_id]["step"] = "waiting_future"
 
-        reply_text = (
-            "ありがとうございます✨\n\n"
-            "では最後に、\n"
-            "これからどうなっていきたいですか？🔮"
-        )
+     reply_text = (
+        "ありがとうございます✨\n\n"
+        "最後に、\n\n"
+        "今回の鑑定を通して、どうなりたいですか？🔮\n\n"
+        "例えば、\n\n"
+        "🌸 お金の不安をなくしたい\n"
+        "🌸 恋愛をうまくいかせたい\n"
+        "🌸 人間関係を改善したい\n"
+        "🌸 仕事を良い方向へ進めたい\n\n"
+        "など、あなたの願いを教えてください😊"
+    )
 
     elif current_step == "waiting_future":
         reply_text = get_ai_reply(
