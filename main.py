@@ -30,7 +30,6 @@ user_states = {}
 
 
 def get_ai_reply(user_data, user_message):
-
     headers = {
         "Authorization": f"Bearer {OPENAI_API_KEY}",
         "Content-Type": "application/json"
@@ -78,7 +77,6 @@ def get_ai_reply(user_data, user_message):
         ai_reply = result["choices"][0]["message"]["content"]
 
         if "恋" in problem:
-
             ai_reply += """
 
 ━━━━━━━━━━━
@@ -107,7 +105,6 @@ https://coconala.com/services/1761884?ref=profile_top_service
 """
 
         elif "金" in problem or "仕事" in problem:
-
             ai_reply += """
 
 ━━━━━━━━━━━
@@ -136,7 +133,6 @@ https://coconala.com/services/1761884?ref=profile_top_service
 """
 
         else:
-
             ai_reply += """
 
 ━━━━━━━━━━━
@@ -169,13 +165,11 @@ https://coconala.com/services/1761884?ref=profile_top_service
 
 @app.route("/callback", methods=["POST"])
 def callback():
-
     signature = request.headers["X-Line-Signature"]
     body = request.get_data(as_text=True)
 
     try:
         handler.handle(body, signature)
-
     except InvalidSignatureError:
         abort(400)
 
@@ -184,7 +178,6 @@ def callback():
 
 @handler.add(FollowEvent)
 def handle_follow(event):
-
     user_id = event.source.user_id
 
     user_states[user_id] = {
@@ -205,7 +198,6 @@ def handle_follow(event):
     )
 
     with ApiClient(configuration) as api_client:
-
         line_bot_api = MessagingApi(api_client)
 
         line_bot_api.reply_message(
@@ -220,18 +212,15 @@ def handle_follow(event):
 
 @handler.add(MessageEvent, message=TextMessageContent)
 def handle_message(event):
-
     user_id = event.source.user_id
     user_message = event.message.text
 
     if user_id not in user_states:
-
         user_states[user_id] = {
             "step": "completed"
         }
 
     if user_message == "無料鑑定" or user_message == "無料鑑定希望":
-
         user_states[user_id] = {
             "step": "waiting_name"
         }
@@ -242,7 +231,6 @@ def handle_message(event):
         )
 
         with ApiClient(configuration) as api_client:
-
             line_bot_api = MessagingApi(api_client)
 
             line_bot_api.reply_message(
@@ -259,7 +247,6 @@ def handle_message(event):
     current_step = user_states[user_id]["step"]
 
     if current_step == "waiting_name":
-
         user_states[user_id]["name"] = user_message
         user_states[user_id]["step"] = "waiting_birth"
 
@@ -270,32 +257,28 @@ def handle_message(event):
             "（例：1995/03/21）"
         )
 
-elif current_step == "waiting_birth":
+    elif current_step == "waiting_birth":
+        user_states[user_id]["birth"] = user_message
+        user_states[user_id]["step"] = "waiting_problem"
 
-    user_states[user_id]["birth"] = user_message
-    user_states[user_id]["step"] = "waiting_problem"
+        reply_text = (
+            "ありがとうございます😊\n\n"
+            "次に、今一番悩んでいることを教えてください✨\n\n"
+            "恋愛・仕事・人間関係・金運など、\n"
+            "どんなことでも大丈夫です😊"
+        )
 
-    reply_text = (
-        "ありがとうございます😊\n\n"
-        "次に、今一番悩んでいることを教えてください✨\n\n"
-        "恋愛・仕事・人間関係・金運など、\n"
-        "どんなことでも大丈夫です😊"
-    )
+    elif current_step == "waiting_problem":
+        user_states[user_id]["problem"] = user_message
+        user_states[user_id]["step"] = "waiting_future"
 
-elif current_step == "waiting_birth":
-
-    user_states[user_id]["birth"] = user_message
-    user_states[user_id]["step"] = "waiting_problem"
-
-    reply_text = (
-        "ありがとうございます😊\n\n"
-        "次に、今一番悩んでいることを教えてください✨\n\n"
-        "恋愛・仕事・人間関係・金運など、\n"
-        "どんなことでも大丈夫です😊"
-    )
+        reply_text = (
+            "ありがとうございます✨\n\n"
+            "では最後に、\n"
+            "これからどうなっていきたいですか？🔮"
+        )
 
     elif current_step == "waiting_future":
-
         reply_text = get_ai_reply(
             user_states[user_id],
             user_message
@@ -304,14 +287,12 @@ elif current_step == "waiting_birth":
         user_states[user_id]["step"] = "completed"
 
     else:
-
         reply_text = (
             "無料鑑定をご希望の場合は、\n"
             "リッチメニューの『無料鑑定』を押してください🔮"
         )
 
     with ApiClient(configuration) as api_client:
-
         line_bot_api = MessagingApi(api_client)
 
         line_bot_api.reply_message(
@@ -325,7 +306,6 @@ elif current_step == "waiting_birth":
 
 
 if __name__ == "__main__":
-
     port = int(os.environ.get("PORT", 8080))
 
     app.run(
