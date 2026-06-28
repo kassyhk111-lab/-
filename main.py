@@ -270,18 +270,17 @@ def handle_message(event):
             "（例：1995/03/21）"
         )
 
-    elif current_step == "waiting_birth":
+elif current_step == "waiting_birth":
 
-        user_states[user_id]["birth"] = user_message
-        user_states[user_id]["step"] = "waiting_problem"
+    user_states[user_id]["birth"] = user_message
+    user_states[user_id]["step"] = "waiting_problem"
 
-      reply_text = (
-    "ありがとうございます😊\n\n"
-    "次に、今一番悩んでいることを教えてください✨\n\n"
-    "恋愛・仕事・人間関係・金運など、\n"
-    "どんなことでも大丈夫です😊"
-)
-        )
+    reply_text = (
+        "ありがとうございます😊\n\n"
+        "次に、今一番悩んでいることを教えてください✨\n\n"
+        "恋愛・仕事・人間関係・金運など、\n"
+        "どんなことでも大丈夫です😊"
+    )
 
 elif current_step == "waiting_birth":
 
