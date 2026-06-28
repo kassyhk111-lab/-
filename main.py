@@ -26,13 +26,9 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 configuration = Configuration(access_token=LINE_ACCESS_TOKEN)
 handler = WebhookHandler(LINE_CHANNEL_SECRET)
 
-# ユーザー状態保存
 user_states = {}
 
 
-# -------------------------
-# OpenAI返信
-# -------------------------
 def get_ai_reply(user_data, user_message):
 
     headers = {
@@ -72,7 +68,6 @@ def get_ai_reply(user_data, user_message):
     }
 
     try:
-
         response = requests.post(
             "https://api.openai.com/v1/chat/completions",
             headers=headers,
@@ -80,12 +75,8 @@ def get_ai_reply(user_data, user_message):
         )
 
         result = response.json()
-
         ai_reply = result["choices"][0]["message"]["content"]
 
-        # -------------------------
-        # 恋愛系
-        # -------------------------
         if "恋" in problem:
 
             ai_reply += """
@@ -115,9 +106,6 @@ https://coconala.com/services/1761884?ref=profile_top_service
 ━━━━━━━━━━━
 """
 
-        # -------------------------
-        # お金系
-        # -------------------------
         elif "金" in problem or "仕事" in problem:
 
             ai_reply += """
@@ -147,9 +135,6 @@ https://coconala.com/services/1761884?ref=profile_top_service
 ━━━━━━━━━━━
 """
 
-        # -------------------------
-        # その他
-        # -------------------------
         else:
 
             ai_reply += """
@@ -178,15 +163,10 @@ https://coconala.com/services/1761884?ref=profile_top_service
         return ai_reply
 
     except Exception as e:
-
         print(e)
-
         return "現在AI返信でエラーが発生しています。"
 
 
-# -------------------------
-# Webhook
-# -------------------------
 @app.route("/callback", methods=["POST"])
 def callback():
 
@@ -202,9 +182,6 @@ def callback():
     return "OK"
 
 
-# -------------------------
-# 友達追加時
-# -------------------------
 @handler.add(FollowEvent)
 def handle_follow(event):
 
@@ -215,11 +192,16 @@ def handle_follow(event):
     }
 
     welcome_message = (
-        "友達追加ありがとうございます🔮\n\n"
-        "西洋占星術鑑定をしている\n"
-        "占い師HIDEです✨\n\n"
-        "あなた専用の占いを始めます😊\n\n"
-        "まずは、お名前（ニックネームOK）を教えてください✨"
+        "ご登録ありがとうございます🔮\n\n"
+        "占い師HIDEです😊\n\n"
+        "この度は、ご登録いただきありがとうございます。\n\n"
+        "これから無料で、あなた専用の西洋占星術鑑定をさせていただきます✨\n\n"
+        "鑑定では、\n"
+        "🌟 あなたの今の運勢\n"
+        "🌟 悩みの原因\n"
+        "🌟 より良い未来へ進むためのアドバイス\n\n"
+        "を、一人ひとりに合わせてお伝えします。\n\n"
+        "鑑定を始めますので、まずはお名前（ニックネームOK）を教えてください😊"
     )
 
     with ApiClient(configuration) as api_client:
@@ -236,9 +218,6 @@ def handle_follow(event):
         )
 
 
-# -------------------------
-# メッセージ受信
-# -------------------------
 @handler.add(MessageEvent, message=TextMessageContent)
 def handle_message(event):
 
@@ -251,9 +230,6 @@ def handle_message(event):
             "step": "completed"
         }
 
-    # -------------------------
-    # 無料鑑定リセット
-    # -------------------------
     if user_message == "無料鑑定" or user_message == "無料鑑定希望":
 
         user_states[user_id] = {
@@ -282,7 +258,6 @@ def handle_message(event):
 
     current_step = user_states[user_id]["step"]
 
-    # 名前入力
     if current_step == "waiting_name":
 
         user_states[user_id]["name"] = user_message
@@ -294,7 +269,6 @@ def handle_message(event):
             "（例：1995/03/21）"
         )
 
-    # 生年月日入力
     elif current_step == "waiting_birth":
 
         user_states[user_id]["birth"] = user_message
@@ -305,7 +279,6 @@ def handle_message(event):
             "今、特に占ってほしいことを教えてください✨"
         )
 
-    # 悩み入力
     elif current_step == "waiting_problem":
 
         user_states[user_id]["problem"] = user_message
@@ -317,7 +290,6 @@ def handle_message(event):
             "これからどうなっていきたいですか？🔮"
         )
 
-    # 理想未来入力 → AI鑑定
     elif current_step == "waiting_future":
 
         reply_text = get_ai_reply(
@@ -327,7 +299,6 @@ def handle_message(event):
 
         user_states[user_id]["step"] = "completed"
 
-    # 通常会話
     else:
 
         reply_text = (
@@ -349,9 +320,6 @@ def handle_message(event):
         )
 
 
-# -------------------------
-# 起動
-# -------------------------
 if __name__ == "__main__":
 
     port = int(os.environ.get("PORT", 8080))
